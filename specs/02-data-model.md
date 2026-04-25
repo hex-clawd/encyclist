@@ -1,12 +1,12 @@
-# GameVault — Data Model
+# Encyclist — Data Model
 
 ## SQLite Schema
 
-### `gv_entity_types`
-Defines the schema for each entity type. Created on-the-fly by designers.
+### `ec_entity_types`
+Defines the schema for each entity type. Created on-the-fly by users.
 
 ```sql
-CREATE TABLE gv_entity_types (
+CREATE TABLE ec_entity_types (
     name        TEXT PRIMARY KEY,     -- "creatures", "items", "quests"
     description TEXT,                 -- Human-readable description
     fields      TEXT NOT NULL,        -- JSON: field definitions
@@ -31,46 +31,45 @@ CREATE TABLE gv_entity_types (
 }
 ```
 
-### `gv_entities`
-Stores all entity instances. Entity data is stored as JSON in a single column.
-Dynamic tables are NOT used — instead, we store JSON and query via SQLite's `json_extract()`.
+### `ec_entities`
+Stores all entity instances. Data stored as JSON, queried via `json_extract()`.
 
 ```sql
-CREATE TABLE gv_entities (
-    id          TEXT PRIMARY KEY,     -- UUID
-    type        TEXT NOT NULL,        -- FK to gv_entity_types.name
+CREATE TABLE ec_entities (
+    id          TEXT PRIMARY KEY,     -- ent_xxxxxxxx
+    type        TEXT NOT NULL,        -- FK to ec_entity_types.name
     data        TEXT NOT NULL,        -- JSON: entity field values
-    created_by  TEXT,                 -- Agent/user who created this
+    created_by  TEXT,                 -- API key identity
     created_at  TEXT DEFAULT (datetime('now')),
     updated_at  TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (type) REFERENCES gv_entity_types(name)
+    FOREIGN KEY (type) REFERENCES ec_entity_types(name)
 );
 
-CREATE INDEX idx_entities_type ON gv_entities(type);
+CREATE INDEX idx_entities_type ON ec_entities(type);
 ```
 
-**Why JSON column instead of dynamic tables?**
-- Entity types are defined at runtime by designers — we can't create tables on the fly reliably
-- SQLite's `json_extract(data, '$.hp')` supports indexing and WHERE clauses
-- Simpler migration story — schema never changes
-- Performance: for a game project (hundreds to low thousands of entities), this is plenty fast
+**Why JSON column instead of dynamic tables:**
+- Entity types defined at runtime — can't create tables on the fly reliably
+- SQLite's `json_extract(data, '$.hp')` supports WHERE clauses and indexing
+- Simpler schema — never needs migration
+- Performance: hundreds to low thousands of entities is trivial for SQLite
 
 **Querying:**
 ```sql
 -- All fire creatures with HP > 100
-SELECT * FROM gv_entities 
+SELECT * FROM ec_entities 
 WHERE type = 'creatures' 
   AND json_extract(data, '$.element') = 'Fire'
   AND json_extract(data, '$.hp') > 100
 ORDER BY json_extract(data, '$.hp') DESC;
 ```
 
-### `gv_relationships`
+### `ec_relationships`
 Typed directed edges between entities and/or documents.
 
 ```sql
-CREATE TABLE gv_relationships (
-    id          TEXT PRIMARY KEY,     -- UUID
+CREATE TABLE ec_relationships (
+    id          TEXT PRIMARY KEY,     -- rel_xxxxxxxx
     from_id     TEXT NOT NULL,        -- Entity or doc ID
     relation    TEXT NOT NULL,        -- "drops", "requires", "happens_in"
     to_id       TEXT NOT NULL,        -- Entity or doc ID
@@ -79,18 +78,18 @@ CREATE TABLE gv_relationships (
     UNIQUE(from_id, relation, to_id)
 );
 
-CREATE INDEX idx_rels_from ON gv_relationships(from_id);
-CREATE INDEX idx_rels_to ON gv_relationships(to_id);
-CREATE INDEX idx_rels_relation ON gv_relationships(relation);
+CREATE INDEX idx_rels_from ON ec_relationships(from_id);
+CREATE INDEX idx_rels_to ON ec_relationships(to_id);
+CREATE INDEX idx_rels_relation ON ec_relationships(relation);
 ```
 
-### `gv_docs`
-Metadata for documents stored in ChromaDB. ChromaDB holds the embeddings and content,
-SQLite holds the structured metadata for filtering.
+### `ec_docs`
+Metadata for documents stored in ChromaDB. ChromaDB holds embeddings + content,
+SQLite holds structured metadata for filtering.
 
 ```sql
-CREATE TABLE gv_docs (
-    id          TEXT PRIMARY KEY,     -- UUID (matches ChromaDB ID)
+CREATE TABLE ec_docs (
+    id          TEXT PRIMARY KEY,     -- doc_xxxxxxxx (matches ChromaDB ID)
     title       TEXT,
     source      TEXT,                 -- "matej", "designer", "meeting"
     tags        TEXT,                 -- JSON array of strings
@@ -99,48 +98,84 @@ CREATE TABLE gv_docs (
 );
 ```
 
-### `gv_changes` (audit log)
-Tracks all changes for history and conflict resolution.
+### `ec_changes` (audit log)
+Tracks all changes for history and debugging.
 
 ```sql
-CREATE TABLE gv_changes (
+CREATE TABLE ec_changes (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     action      TEXT NOT NULL,        -- "create", "update", "delete"
     target_type TEXT NOT NULL,        -- "entity", "doc", "relationship", "entity_type"
     target_id   TEXT NOT NULL,
     changes     TEXT,                 -- JSON: what changed
-    author      TEXT,                 -- Agent/user who made the change
+    author      TEXT,                 -- API key identity
     timestamp   TEXT DEFAULT (datetime('now'))
 );
 
-CREATE INDEX idx_changes_target ON gv_changes(target_type, target_id);
+CREATE INDEX idx_changes_target ON ec_changes(target_type, target_id);
+```
+
+### `ec_api_keys`
+API keys for agent authentication.
+
+```sql
+CREATE TABLE ec_api_keys (
+    key_hash    TEXT PRIMARY KEY,     -- SHA256 of the API key
+    name        TEXT NOT NULL,        -- "hermes", "designer-agent"
+    created_at  TEXT DEFAULT (datetime('now')),
+    last_used   TEXT
+);
 ```
 
 ---
 
 ## ChromaDB Collections
 
-### `gamevault_docs`
+### `encyclist_docs`
 Single collection for all documents.
 
-- **Documents:** the raw text content
+- **Documents:** raw text content
 - **Metadatas:** `{title, source, tags_json, created_at}`
-- **IDs:** matching SQLite `gv_docs.id`
-- **Embedding function:** default (all-MiniLM-L6-v2 or OpenAI, configurable)
-
-No collections per project or tag — ChromaDB's metadata filtering handles that.
+- **IDs:** matching SQLite `ec_docs.id`
+- **Embedding function:** all-MiniLM-L6-v2 (runs locally in the container, no API call needed)
 
 ---
 
 ## ID Scheme
 
-All IDs are UUIDs generated at creation time:
+All IDs use a prefix + 8-char hex for readability:
 
-- Entity IDs: `ent_` prefix + short UUID → `ent_a1b2c3d4`
-- Doc IDs: `doc_` prefix + short UUID → `doc_e5f6g7h8`
-- Relationship IDs: `rel_` prefix + short UUID → `rel_i9j0k1l2`
+- Entity IDs: `ent_` → `ent_a1b2c3d4`
+- Doc IDs: `doc_` → `doc_e5f6g7h8`
+- Relationship IDs: `rel_` → `rel_i9j0k1l2`
 
-Short UUIDs (8 chars) for readability in agent conversations. Collision probability negligible at game-project scale.
+---
+
+## Authentication
+
+API key based. Each agent gets a unique key.
+
+- Keys are passed as `X-API-Key` header on every request
+- Server hashes the key (SHA256) and looks up in `ec_api_keys`
+- The key's `name` is used as `created_by` / `author` in entity and audit records
+- No sessions, no tokens, no OAuth — just keys
+
+**Key management:**
+- `ec_key_create(name)` → generates a key, stores the hash, returns the plaintext key once
+- `ec_key_list()` → shows key names and last used timestamps
+- `ec_key_revoke(name)` → removes a key
+
+---
+
+## Data Directory Structure (on Fly.io volume)
+
+```
+/data/
+├── encyclist.db     # SQLite database (all structured data + doc metadata)
+└── chroma/          # ChromaDB persistence directory
+```
+
+Both live on the Fly persistent volume. Backed up via `ec_export` to JSON.
 
 ---
 
@@ -148,42 +183,40 @@ Short UUIDs (8 chars) for readability in agent conversations. Collision probabil
 
 ### "Add Fire Imp creature"
 ```
-1. Agent calls gv_entity_create(type="creatures", data={...})
-2. Server validates data against gv_entity_types.fields
-3. Server inserts into gv_entities with generated ID
-4. Server logs change in gv_changes
+1. Agent calls ec_entity_create(type="creatures", data={...})
+2. Server validates data against ec_entity_types.fields
+3. Server inserts into ec_entities with generated ID
+4. Server logs change in ec_changes (author = API key name)
 5. Returns {entity_id: "ent_a1b2c3d4", ...}
 ```
 
 ### "What's the design intent for fire creatures?"
 ```
-1. Agent calls gv_doc_search(query="design intent fire creatures")
+1. Agent calls ec_doc_search(query="design intent fire creatures")
 2. Server queries ChromaDB with embedding
 3. Returns matching docs with similarity scores
 ```
 
 ### "Generate spawning code for Volcanic Caves"
 ```
-1. Agent calls gv_entity_query(type="creatures", where={"location": "Volcanic Caves"})
-2. Server runs SQL: WHERE type='creatures' AND json_extract(data, '$.location') = 'Volcanic Caves'
-3. Agent calls gv_rel_query(from_id=<each creature>, relation="drops")
+1. Agent calls ec_entity_query(type="creatures", where={"location": "Volcanic Caves"})
+2. Server: WHERE type='creatures' AND json_extract(data, '$.location') = 'Volcanic Caves'
+3. Agent calls ec_rel_query(from_id=<each creature>, relation="drops")
 4. Agent has full structured data to generate code
 ```
 
-### "What items does the Volcanic Boss quest require?"
+### "What items does the Volcanic Boss quest need?"
 ```
-1. Agent calls gv_entity_query(type="quests", where={"name": "Volcanic Boss"})
-2. Agent calls gv_rel_query(from_id=<quest_id>, relation="requires", depth=2)
-3. Returns: quest → requires → ember_stone (item) → dropped_by → fire_imp (creature)
-4. Agent can tell the designer: "You need to kill Fire Imps for Ember Stones before starting this quest"
+1. Agent calls ec_entity_query(type="quests", where={"name": "Volcanic Boss"})
+2. Agent calls ec_rel_query(from_id=<quest_id>, relation="requires", depth=2)
+3. Returns: quest → requires → ember_stone → dropped_by → fire_imp
 ```
 
 ---
 
-## Backup & Portability
+## Backup & Recovery
 
-The entire vault is two things:
-1. `data/gamevault.db` — SQLite file (entities, relationships, doc metadata, audit log)
-2. `data/chroma/` — ChromaDB directory (doc embeddings)
-
-Back up by copying both. Restore by replacing both. Export to JSON via `gv_export` for human-readable snapshots or migration.
+- **Export:** `ec_export` → JSON file with all data
+- **Volume snapshot:** Fly.io persistent volumes can be snapshotted
+- **Restore:** `ec_import` from JSON, or replace volume from snapshot
+- **Recommended:** cron `ec_export` to a local file periodically

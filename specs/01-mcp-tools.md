@@ -1,11 +1,17 @@
-# GameVault — MCP Tools Specification
+# Encyclist — MCP Tools Specification
 
-All tools exposed via the GameVault MCP server. Agents call these directly. No intermediate steps.
+All tools exposed via the Encyclist MCP server. Agents connect over StreamableHTTP at `https://encyclist.fly.dev/mcp`. Auth via `X-API-Key` header.
+
+**Tool naming prefix:** `ec_` (for encyclist)
+
+---
 
 ## Document Store Tools (ChromaDB-backed)
 
-### `gv_doc_add`
-Store a document in the semantic store. No categorization required — the content is indexed by meaning.
+For unstructured content: design docs, PRDs, lore, meeting notes, brainstorms, random ideas. No organization required — indexed by meaning.
+
+### `ec_doc_add`
+Store a document. Content is indexed by meaning automatically.
 
 **Parameters:**
 - `content` (string, required) — the document text
@@ -17,7 +23,7 @@ Store a document in the semantic store. No categorization required — the conte
 
 **Example:**
 ```
-Agent: gv_doc_add(
+ec_doc_add(
   content="Combat philosophy: fire creatures are glass cannons — high damage, low HP. 
            This contrasts with earth creatures which are tanks. Ice creatures are 
            crowd-control specialists with moderate stats.",
@@ -29,7 +35,7 @@ Agent: gv_doc_add(
 
 ---
 
-### `gv_doc_search`
+### `ec_doc_search`
 Semantic search across all documents. Finds by meaning, not keywords.
 
 **Parameters:**
@@ -42,13 +48,13 @@ Semantic search across all documents. Finds by meaning, not keywords.
 
 **Example:**
 ```
-Agent: gv_doc_search(query="what's the design philosophy for fire creatures?")
-→ Returns the "Combat Element Philosophy" doc above
+ec_doc_search(query="what's the design philosophy for fire creatures?")
+→ Returns the "Combat Element Philosophy" doc
 ```
 
 ---
 
-### `gv_doc_get`
+### `ec_doc_get`
 Retrieve a specific document by ID.
 
 **Parameters:**
@@ -58,12 +64,12 @@ Retrieve a specific document by ID.
 
 ---
 
-### `gv_doc_update`
+### `ec_doc_update`
 Update an existing document's content or metadata.
 
 **Parameters:**
 - `doc_id` (string, required)
-- `content` (string, optional) — new content
+- `content` (string, optional) — new content (replaces entirely)
 - `title` (string, optional) — new title
 - `tags` (string[], optional) — replace tags
 
@@ -71,7 +77,7 @@ Update an existing document's content or metadata.
 
 ---
 
-### `gv_doc_list`
+### `ec_doc_list`
 List documents, optionally filtered.
 
 **Parameters:**
@@ -84,7 +90,7 @@ List documents, optionally filtered.
 
 ---
 
-### `gv_doc_delete`
+### `ec_doc_delete`
 Remove a document.
 
 **Parameters:**
@@ -96,8 +102,10 @@ Remove a document.
 
 ## Entity Store Tools (SQLite-backed)
 
-### `gv_entity_type_define`
-Define a new entity type with its schema. Entity types are created on-the-fly by designers.
+For structured tabular data: game entities, product catalogs, configuration tables, anything with defined fields. Entity types are created on-the-fly.
+
+### `ec_entity_type_define`
+Define a new entity type with its schema.
 
 **Parameters:**
 - `name` (string, required) — entity type name (e.g. "creatures", "items", "quests")
@@ -109,7 +117,7 @@ Define a new entity type with its schema. Entity types are created on-the-fly by
 
 **Example:**
 ```
-Agent: gv_entity_type_define(
+ec_entity_type_define(
   name="creatures",
   fields={
     "name":        {"type": "string", "required": true, "description": "Creature name"},
@@ -128,7 +136,7 @@ Agent: gv_entity_type_define(
 
 ---
 
-### `gv_entity_type_list`
+### `ec_entity_type_list`
 List all defined entity types.
 
 **Parameters:** none
@@ -137,7 +145,7 @@ List all defined entity types.
 
 ---
 
-### `gv_entity_create`
+### `ec_entity_create`
 Create a new entity instance.
 
 **Parameters:**
@@ -148,7 +156,7 @@ Create a new entity instance.
 
 **Example:**
 ```
-Agent: gv_entity_create(
+ec_entity_create(
   type="creatures",
   data={
     "name": "Fire Imp",
@@ -165,7 +173,7 @@ Agent: gv_entity_create(
 
 ---
 
-### `gv_entity_get`
+### `ec_entity_get`
 Get a single entity by ID.
 
 **Parameters:**
@@ -175,13 +183,14 @@ Get a single entity by ID.
 
 ---
 
-### `gv_entity_query`
-Exact structured query. This is the precision tool for code generation.
+### `ec_entity_query`
+Exact structured query. The precision tool for code generation and exact filtering.
 
 **Parameters:**
 - `type` (string, required) — entity type to query
 - `where` (object, optional) — field filters
   - Supports: `{"field": value}` (exact), `{"field": {">": 100}}`, `{"field": {"in": ["a","b"]}}`
+  - Operators: `=`, `!=`, `>`, `<`, `>=`, `<=`, `in`, `like`
 - `order_by` (string, optional) — field to sort by
 - `order_dir` (string, optional) — "asc" or "desc", default "asc"
 - `limit` (int, optional, default 50)
@@ -192,7 +201,7 @@ Exact structured query. This is the precision tool for code generation.
 **Examples:**
 ```
 // All rare fire creatures with HP > 100
-Agent: gv_entity_query(
+ec_entity_query(
   type="creatures",
   where={"element": "Fire", "rarity": "Rare", "hp": {">": 100}},
   order_by="hp",
@@ -200,7 +209,7 @@ Agent: gv_entity_query(
 )
 
 // All creatures in Volcanic Caves, sorted by attack
-Agent: gv_entity_query(
+ec_entity_query(
   type="creatures",
   where={"location": "Volcanic Caves"},
   order_by="attack",
@@ -208,23 +217,23 @@ Agent: gv_entity_query(
 )
 
 // All entities of a type
-Agent: gv_entity_query(type="creatures")
+ec_entity_query(type="creatures")
 ```
 
 ---
 
-### `gv_entity_update`
-Update entity field values.
+### `ec_entity_update`
+Update entity field values. Partial update — only listed fields change.
 
 **Parameters:**
 - `entity_id` (string, required)
-- `data` (object, required) — fields to update (partial update, only listed fields change)
+- `data` (object, required) — fields to update
 
 **Returns:** `{"status": "updated", "entity_id": "...", "data": {...}}`
 
 ---
 
-### `gv_entity_delete`
+### `ec_entity_delete`
 Delete an entity.
 
 **Parameters:**
@@ -236,8 +245,8 @@ Delete an entity.
 
 ## Relationship Tools
 
-### `gv_rel_add`
-Create a relationship between two entities or between an entity and a document.
+### `ec_rel_add`
+Create a typed directed relationship between two entities or between an entity and a document.
 
 **Parameters:**
 - `from_id` (string, required) — source entity/doc ID
@@ -250,20 +259,20 @@ Create a relationship between two entities or between an entity and a document.
 **Examples:**
 ```
 // Quest requires item
-gv_rel_add(from_id="quest_001", relation="requires", to_id="item_sword_01")
+ec_rel_add(from_id="quest_001", relation="requires", to_id="item_sword_01")
 
-// Creature drops item
-gv_rel_add(from_id="creature_fire_imp", relation="drops", to_id="item_ember_stone", 
+// Creature drops item (with drop chance)
+ec_rel_add(from_id="creature_fire_imp", relation="drops", to_id="item_ember_stone", 
            properties={"chance": 0.3})
 
 // Entity references design doc
-gv_rel_add(from_id="creature_fire_imp", relation="designed_by", to_id="doc_combat_philosophy")
+ec_rel_add(from_id="creature_fire_imp", relation="designed_by", to_id="doc_combat_philosophy")
 ```
 
 ---
 
-### `gv_rel_query`
-Find relationships.
+### `ec_rel_query`
+Find relationships. Supports multi-hop traversal.
 
 **Parameters:**
 - `from_id` (string, optional) — filter by source
@@ -276,15 +285,15 @@ Find relationships.
 **Examples:**
 ```
 // What does the Fire Imp drop?
-gv_rel_query(from_id="creature_fire_imp", relation="drops")
+ec_rel_query(from_id="creature_fire_imp", relation="drops")
 
-// What's the full chain: quest → requires → item → dropped_by → creature
-gv_rel_query(from_id="quest_001", depth=2)
+// Full chain: quest → requires → item → dropped_by → creature
+ec_rel_query(from_id="quest_001", depth=2)
 ```
 
 ---
 
-### `gv_rel_delete`
+### `ec_rel_delete`
 Remove a relationship.
 
 **Parameters:**
@@ -296,7 +305,7 @@ Remove a relationship.
 
 ## Utility Tools
 
-### `gv_stats`
+### `ec_stats`
 Overview of the vault — entity counts, doc counts, relationship counts.
 
 **Parameters:** none
@@ -305,7 +314,7 @@ Overview of the vault — entity counts, doc counts, relationship counts.
 
 ---
 
-### `gv_search`
+### `ec_search`
 Universal search — tries both semantic (docs) and structured (entities) and returns merged results. For when the agent doesn't know which store to hit.
 
 **Parameters:**
@@ -316,7 +325,7 @@ Universal search — tries both semantic (docs) and structured (entities) and re
 
 ---
 
-### `gv_export`
+### `ec_export`
 Export all data as JSON. For backup or migration.
 
 **Parameters:** none
@@ -325,7 +334,7 @@ Export all data as JSON. For backup or migration.
 
 ---
 
-### `gv_import`
+### `ec_import`
 Import data from a JSON export. Merges with existing data.
 
 **Parameters:**
