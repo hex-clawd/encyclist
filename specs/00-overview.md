@@ -62,7 +62,7 @@ Current state: designer's work lives in chat history and loose files. Not sharea
 
 - **Python 3.11+** — MCP server implementation
 - **SQLite** — structured entity storage, on Fly persistent volume
-- **ChromaDB** — semantic vector storage for docs (proven engine, same as MemPalace)
+- **ChromaDB** — semantic vector storage for docs (same tech as MemPalace, but completely separate instance)
 - **MCP SDK** (`mcp` package) — StreamableHTTP transport
 - **Fly.io** — hosting, persistent volume, auto-wake on traffic
 - **FastAPI + Jinja2** (optional, phase 2) — lightweight web UI
