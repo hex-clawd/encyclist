@@ -7,6 +7,7 @@ primary_region = "ams"
 [env]
   ENCYCLIST_DATA_DIR = "/data"
   CHROMA_HOME = "/data/chroma"
+  ENCYCLIST_URL = "http://127.0.0.1:8000/mcp"
 
 [http_service]
   internal_port = 8000

@@ -9,9 +9,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml ./
-RUN pip install --no-cache-dir .
+RUN pip install --no-cache-dir ".[web]"
 
 COPY src/ src/
+COPY web/ web/
 
 ENV ENCYCLIST_DATA_DIR=/data \
     CHROMA_HOME=/data/chroma \

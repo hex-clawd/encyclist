@@ -1,0 +1,18 @@
+<form class="doc-edit-form" method="post" action="/doc/{{ doc.doc_id }}/update">
+    <div class="form-row">
+        <label for="d-title">Title</label>
+        <input type="text" id="d-title" name="title" value="{{ doc.title or '' }}">
+    </div>
+    <div class="form-row">
+        <label for="d-tags">Tags <small>(comma-separated)</small></label>
+        <input type="text" id="d-tags" name="tags" value="{{ ', '.join(doc.tags or []) }}">
+    </div>
+    <div class="form-row">
+        <label for="d-content">Content <small>(Markdown)</small></label>
+        <textarea id="d-content" name="content" rows="20" class="mono">{{ doc.content }}</textarea>
+    </div>
+    <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Save</button>
+        <a class="btn btn-cancel" href="/doc/{{ doc.doc_id }}">Cancel</a>
+    </div>
+</form>

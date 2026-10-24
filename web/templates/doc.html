@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}{{ doc.title or doc.doc_id }} &mdash; {{ site_name }}{% endblock %}
+{% block content %}
+<article class="page page-doc">
+    <header class="doc-header">
+        <h1 class="page-title">{{ doc.title or "Untitled document" }}</h1>
+        <div class="doc-meta">
+            <span class="badge badge-doc">document</span>
+            {% if doc.source %}<span class="doc-source">source: {{ doc.source }}</span>{% endif %}
+            <span class="entity-id">{{ doc.doc_id }}</span>
+        </div>
+        {% if doc.tags %}
+        <div class="doc-tags">
+            {% for tag in doc.tags %}<a class="tag" href="/search?q={{ tag }}">{{ tag }}</a>{% endfor %}
+        </div>
+        {% endif %}
+    </header>
+
+    <div class="doc-layout">
+        <section id="doc-body" class="doc-body">
+            {{ doc.content|markdown }}
+        </section>
+
+        <aside class="doc-sidebar">
+            <div class="infobox">
+                <h2 class="infobox-title">Document</h2>
+                <table class="infobox-table">
+                    {% if doc.created_at %}<tr><th>Created</th><td>{{ doc.created_at }}</td></tr>{% endif %}
+                    {% if doc.updated_at %}<tr><th>Updated</th><td>{{ doc.updated_at }}</td></tr>{% endif %}
+                    <tr><th>ID</th><td><code>{{ doc.doc_id }}</code></td></tr>
+                </table>
+                <div class="infobox-actions">
+                    <button
+                        class="btn"
+                        hx-get="/doc/{{ doc.doc_id }}/edit"
+                        hx-target="#doc-body"
+                        hx-swap="innerHTML">
+                        Edit
+                    </button>
+                    <form action="/doc/{{ doc.doc_id }}/delete" method="post"
+                          onsubmit="return confirm('Delete this document?');">
+                        <button type="submit" class="btn btn-danger">Delete</button>
+                    </form>
+                </div>
+            </div>
+
+            {% if related %}
+            <div class="infobox">
+                <h2 class="infobox-title">Related</h2>
+                <ul class="related-list">
+                    {% for d in related %}
+                    <li>
+                        <a href="/doc/{{ d.doc_id }}">{{ d.title or d.doc_id }}</a>
+                        {% if d.similarity is not none %}
+                        <small>{{ '%.0f'|format((d.similarity or 0) * 100) }}%</small>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+        </aside>
+    </div>
+</article>
+{% endblock %}

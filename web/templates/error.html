@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} &mdash; {{ site_name }}{% endblock %}
+{% block content %}
+<article class="page">
+    <h1 class="page-title">{{ title }}</h1>
+    <div class="error-box">
+        <p><strong>{{ message }}</strong></p>
+        {% if hint %}<p class="error-hint">{{ hint }}</p>{% endif %}
+    </div>
+    <p><a href="/">&larr; Back to home</a></p>
+</article>
+{% endblock %}

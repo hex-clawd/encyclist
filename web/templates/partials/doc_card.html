@@ -1,0 +1,9 @@
+<div class="card card-doc">
+    <span class="badge badge-doc">document</span>
+    <a href="/doc/{{ doc.doc_id }}" class="card-title">{{ doc.title or doc.doc_id }}</a>
+    {% if doc.tags %}
+    <div class="doc-tags">
+        {% for tag in doc.tags %}<span class="tag">{{ tag }}</span>{% endfor %}
+    </div>
+    {% endif %}
+</div>

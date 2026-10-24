@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Relationships &mdash; {{ site_name }}{% endblock %}
+{% block content %}
+<article class="page page-relations">
+    <h1 class="page-title">Relationships</h1>
+    <p class="page-sub">Typed directed edges between entities and documents.</p>
+
+    <section class="form-card">
+        <h2>Add relationship</h2>
+        <form class="rel-form" method="post" action="/relations">
+            <div class="form-grid">
+                <div class="form-row">
+                    <label for="from_id">From ID</label>
+                    <input type="text" id="from_id" name="from_id" required placeholder="ent_... or doc_...">
+                </div>
+                <div class="form-row">
+                    <label for="relation">Relation</label>
+                    <input type="text" id="relation" name="relation" required placeholder="drops, requires, references...">
+                </div>
+                <div class="form-row">
+                    <label for="to_id">To ID</label>
+                    <input type="text" id="to_id" name="to_id" required placeholder="ent_... or doc_...">
+                </div>
+            </div>
+            <div class="form-row">
+                <label for="properties">Properties <small>(optional JSON)</small></label>
+                <input type="text" id="properties" name="properties" class="mono" placeholder='{"chance": 0.3}'>
+            </div>
+            <button type="submit" class="btn btn-primary">Add</button>
+        </form>
+    </section>
+
+    <section>
+        <h2>Recent relationships</h2>
+        {% if edges %}
+        <table class="data-table">
+            <thead>
+                <tr><th>From</th><th>Relation</th><th>To</th><th>Properties</th><th></th></tr>
+            </thead>
+            <tbody>
+                {% for edge in edges %}
+                <tr>
+                    <td>
+                        {% set u = edge.from_id|id_url %}
+                        {% if u %}<a href="{{ u }}">{{ labels[edge.from_id]|default(edge.from_id) }}</a>
+                        {% else %}{{ labels[edge.from_id]|default(edge.from_id) }}{% endif %}
+                    </td>
+                    <td><span class="rel-tag">{{ edge.relation }}</span></td>
+                    <td>
+                        {% set u = edge.to_id|id_url %}
+                        {% if u %}<a href="{{ u }}">{{ labels[edge.to_id]|default(edge.to_id) }}</a>
+                        {% else %}{{ labels[edge.to_id]|default(edge.to_id) }}{% endif %}
+                    </td>
+                    <td>{% if edge.properties %}<code class="mono">{{ edge.properties|tojson }}</code>{% endif %}</td>
+                    <td>
+                        <form action="/relations/{{ edge.rel_id }}/delete" method="post"
+                              onsubmit="return confirm('Delete this relationship?');">
+                            <button class="btn btn-small btn-danger" type="submit">×</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="empty-state">No relationships yet.</p>
+        {% endif %}
+    </section>
+</article>
+{% endblock %}

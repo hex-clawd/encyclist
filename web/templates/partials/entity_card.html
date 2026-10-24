@@ -1,0 +1,7 @@
+<div class="card card-entity">
+    <span class="badge badge-entity">{{ entity.type }}</span>
+    <a href="/entity/{{ entity.entity_id }}" class="card-title">
+        {{ entity.data.get('name') or entity.data.get('title') or entity.entity_id }}
+    </a>
+    {% if entity.created_at %}<time class="card-time">{{ entity.created_at }}</time>{% endif %}
+</div>

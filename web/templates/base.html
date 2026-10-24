@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}{{ site_name }}{% endblock %}</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
+    {% block head_extra %}{% endblock %}
+</head>
+<body>
+    <header class="site-header">
+        <div class="header-inner">
+            <a class="brand" href="/">
+                <span class="brand-mark">E</span>
+                <span class="brand-name">{{ site_name }}</span>
+                <span class="brand-tag">the open knowledge vault</span>
+            </a>
+            <form class="search-form" action="/search" method="get" role="search" autocomplete="off">
+                <input
+                    type="search"
+                    name="q"
+                    value="{{ q|default('') }}"
+                    placeholder="Search Encyclist..."
+                    aria-label="Search"
+                    hx-get="/search/suggest"
+                    hx-trigger="keyup changed delay:200ms"
+                    hx-target="#search-suggest"
+                    hx-include="this"
+                    hx-swap="innerHTML"
+                >
+                <button type="submit">Go</button>
+                <div id="search-suggest" class="search-suggest"></div>
+            </form>
+        </div>
+        <nav class="site-nav">
+            <a href="/">Home</a>
+            <a href="/create">Create entity</a>
+            <a href="/doc/new">New document</a>
+            <a href="/relations">Relationships</a>
+            <a href="/graph">Graph</a>
+        </nav>
+    </header>
+
+    <main class="site-main">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="site-footer">
+        <p>
+            {{ site_name }} &middot; rendered locally from a remote MCP vault.
+            Pages reflect the live state of the server.
+        </p>
+    </footer>
+</body>
+</html>

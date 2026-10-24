@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}{{ site_name }} &mdash; the open knowledge vault{% endblock %}
+{% block content %}
+<article class="page page-home">
+    <section class="hero">
+        <h1 class="hero-title">Welcome to {{ site_name }}</h1>
+        <p class="hero-sub">
+            A browseable, MCP-native knowledge vault.
+            {% set total_entities = stats.entities.values()|sum if stats.entities else 0 %}
+            <strong>{{ total_entities }}</strong> entities,
+            <strong>{{ stats.documents or 0 }}</strong> documents,
+            <strong>{{ stats.relationships or 0 }}</strong> relationships across
+            <strong>{{ stats.entity_types|length if stats.entity_types else 0 }}</strong> entity types.
+        </p>
+        <form class="hero-search" action="/search" method="get" role="search">
+            <input type="search" name="q" placeholder="Search the vault..." aria-label="Search">
+            <button type="submit">Search</button>
+        </form>
+    </section>
+
+    <div class="home-grid">
+        <section class="home-section">
+            <h2>Entity types</h2>
+            {% if types %}
+            <ul class="type-list">
+                {% for t in types %}
+                <li>
+                    <a href="/type/{{ t.name }}" class="type-link">{{ t.name }}</a>
+                    <span class="type-count">{{ t.entity_count }} {{ "entity" if t.entity_count == 1 else "entities" }}</span>
+                    {% if t.description %}<p class="type-desc">{{ t.description }}</p>{% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="empty-state">
+                No entity types defined yet.
+                <a href="/create">Create one</a> via an agent calling
+                <code>ec_entity_type_define</code>.
+            </p>
+            {% endif %}
+        </section>
+
+        <section class="home-section">
+            <h2>Recent activity</h2>
+            {% if recent %}
+            <ul class="recent-list">
+                {% for item in recent %}
+                <li>
+                    <span class="badge badge-{{ item.kind }}">{{ item.kind }}</span>
+                    <a href="/{{ item.kind }}/{{ item.id }}">{{ item.title }}</a>
+                    {% if item.subtitle %}
+                    <span class="recent-sub">&middot; {{ item.subtitle }}</span>
+                    {% endif %}
+                    {% if item.updated_at %}
+                    <time class="recent-time">{{ item.updated_at }}</time>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="empty-state">Nothing here yet. Add your first document or entity.</p>
+            {% endif %}
+        </section>
+    </div>
+</article>
+{% endblock %}

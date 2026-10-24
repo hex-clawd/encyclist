@@ -14,6 +14,9 @@ when stamping `created_by` / audit-log entries.
 
 from __future__ import annotations
 
+import base64
+import binascii
+import hmac
 import json
 import os
 from contextlib import asynccontextmanager
@@ -271,6 +274,36 @@ def ec_rel_delete(rel_id: str) -> dict:
     return {"status": "deleted", "rel_id": rel_id}
 
 
+# ---- Auth / API keys -----------------------------------------------------
+
+@mcp.tool()
+def ec_key_create(name: str) -> dict:
+    """Generate a new API key for `name`. Plaintext is returned ONCE
+    — only the SHA256 hash is stored. Save the returned key now; it
+    cannot be recovered later."""
+    if not name or not name.strip():
+        raise ValueError("`name` is required")
+    plaintext = AUTH.create_key(name)
+    ENTITIES.log_change("create", "api_key", name, None, _author())
+    return {"name": name, "key": plaintext, "status": "created"}
+
+
+@mcp.tool()
+def ec_key_list() -> list[dict]:
+    """List all API keys by name with created/last-used timestamps.
+    Hashes and plaintext keys are never returned."""
+    return AUTH.list_keys()
+
+
+@mcp.tool()
+def ec_key_revoke(name: str) -> dict:
+    """Remove the API key registered under `name`."""
+    if not AUTH.revoke(name):
+        raise ValueError(f"API key not found: {name!r}")
+    ENTITIES.log_change("delete", "api_key", name, None, _author())
+    return {"status": "revoked", "name": name}
+
+
 # ---- Utilities -----------------------------------------------------------
 
 @mcp.tool()
@@ -502,7 +535,67 @@ def build_app() -> ASGIApp:
     return APIKeyMiddleware(outer, AUTH)
 
 
-app = build_app()
+# ---------------------------------------------------------------------------
+# Web UI mount (HTTP Basic Auth only — /mcp and /health are untouched)
+# ---------------------------------------------------------------------------
+
+
+class BasicAuthMiddleware:
+    """Gate an ASGI app behind HTTP Basic Auth. No-op if `password` is empty."""
+
+    def __init__(self, app: ASGIApp, password: str) -> None:
+        self.app = app
+        self.password = password
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http" or not self.password:
+            await self.app(scope, receive, send)
+            return
+
+        headers = {k.decode().lower(): v.decode() for k, v in scope.get("headers", [])}
+        if self._authorized(headers.get("authorization")):
+            await self.app(scope, receive, send)
+            return
+
+        response = Response(
+            status_code=401,
+            headers={"WWW-Authenticate": 'Basic realm="Encyclist"'},
+        )
+        await response(scope, receive, send)
+
+    def _authorized(self, header: Optional[str]) -> bool:
+        if not header or not header.startswith("Basic "):
+            return False
+        try:
+            decoded = base64.b64decode(header[6:]).decode()
+        except (binascii.Error, UnicodeDecodeError):
+            return False
+        _, _, password = decoded.partition(":")
+        return hmac.compare_digest(password, self.password)
+
+
+def build_full_app() -> ASGIApp:
+    """Compose the deployed app: web UI at `/`, MCP (unchanged) at `/mcp`,
+    health (unchanged) at `/health`. Routing is by simple path dispatch
+    rather than nested Starlette mounts, so `build_app()`'s MCP wiring
+    stays untouched."""
+    from web.app import app as web_app  # local import: avoid import cost in tests
+
+    server_app = build_app()
+    web_app = BasicAuthMiddleware(web_app, os.environ.get("ENCYCLIST_WEB_PASSWORD", "").strip())
+
+    async def dispatch(scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] == "http" and not (
+            scope.get("path", "").startswith("/mcp") or scope.get("path", "") == "/health"
+        ):
+            await web_app(scope, receive, send)
+        else:
+            await server_app(scope, receive, send)
+
+    return dispatch
+
+
+app = build_full_app()
 
 
 # ---------------------------------------------------------------------------

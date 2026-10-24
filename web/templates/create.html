@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Create entity &mdash; {{ site_name }}{% endblock %}
+{% block content %}
+<article class="page page-form">
+    <h1 class="page-title">Create entity</h1>
+
+    {% if not type_meta %}
+    <p class="page-sub">Pick an entity type to create.</p>
+    {% if types %}
+    <ul class="type-list">
+        {% for t in types %}
+        <li>
+            <a class="type-link" href="/create?type={{ t.name }}">{{ t.name }}</a>
+            <span class="type-count">{{ t.field_count }} fields &middot; {{ t.entity_count }} existing</span>
+            {% if t.description %}<p class="type-desc">{{ t.description }}</p>{% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="empty-state">No entity types defined yet. An agent must call <code>ec_entity_type_define</code> first.</p>
+    {% endif %}
+
+    {% else %}
+    <p class="page-sub">
+        Creating new <strong>{{ type_meta.name }}</strong>.
+        {% if type_meta.description %}<br>{{ type_meta.description }}{% endif %}
+    </p>
+    <form class="entity-edit-form" method="post" action="/create">
+        <input type="hidden" name="__type" value="{{ type_meta.name }}">
+        {% for fname, spec in type_meta.fields.items() %}
+        <div class="form-row">
+            <label for="f-{{ fname }}">
+                {{ fname }}
+                {% if spec.required %}<span class="required">*</span>{% endif %}
+                <small class="form-type">{{ spec.type }}</small>
+            </label>
+            {% if spec.type == "text" %}
+            <textarea id="f-{{ fname }}" name="{{ fname }}" rows="6" {% if spec.required %}required{% endif %}></textarea>
+            {% elif spec.type == "json" %}
+            <textarea id="f-{{ fname }}" name="{{ fname }}" rows="4" class="mono" placeholder="{}"></textarea>
+            {% elif spec.type == "bool" %}
+            <input type="checkbox" id="f-{{ fname }}" name="{{ fname }}" value="true">
+            {% elif spec.type == "int" %}
+            <input type="number" step="1" id="f-{{ fname }}" name="{{ fname }}" {% if spec.required %}required{% endif %}>
+            {% elif spec.type == "float" %}
+            <input type="number" step="any" id="f-{{ fname }}" name="{{ fname }}" {% if spec.required %}required{% endif %}>
+            {% else %}
+            <input type="text" id="f-{{ fname }}" name="{{ fname }}" {% if spec.required %}required{% endif %}>
+            {% endif %}
+            {% if spec.description %}<small class="form-help">{{ spec.description }}</small>{% endif %}
+        </div>
+        {% endfor %}
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Create</button>
+            <a class="btn btn-cancel" href="/create">Back to types</a>
+        </div>
+    </form>
+    {% endif %}
+</article>
+{% endblock %}

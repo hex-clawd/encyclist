@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}{{ type_meta.name }} &mdash; {{ site_name }}{% endblock %}
+{% block content %}
+<article class="page page-type">
+    <header class="page-header">
+        <h1 class="page-title">{{ type_meta.name }}</h1>
+        {% if type_meta.description %}<p class="page-sub">{{ type_meta.description }}</p>{% endif %}
+        <p class="page-meta">{{ total }} {{ "entity" if total == 1 else "entities" }} of this type</p>
+        <p><a class="btn btn-primary" href="/create?type={{ type_meta.name }}">+ Create new {{ type_meta.name }}</a></p>
+    </header>
+
+    {% if entities %}
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    {% for f in key_fields %}<th>{{ f }}</th>{% endfor %}
+                    <th>created</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ent in entities %}
+                <tr>
+                    {% for f in key_fields %}
+                    <td>
+                        {% if loop.first %}
+                        <a href="/entity/{{ ent.entity_id }}">{{ ent.data.get(f) or ent.entity_id }}</a>
+                        {% else %}
+                        {% set v = ent.data.get(f) %}
+                        {% if v is mapping or (v is sequence and v is not string) %}
+                        <code class="mono">{{ v|tojson }}</code>
+                        {% else %}
+                        {{ v if v is not none else '' }}
+                        {% endif %}
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                    <td><time>{{ ent.created_at or '' }}</time></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="empty-state">No entities of this type yet.</p>
+    {% endif %}
+
+    <section class="schema-block">
+        <h2>Schema</h2>
+        <table class="prop-table">
+            <thead><tr><th>field</th><th>type</th><th>required</th><th>description</th></tr></thead>
+            <tbody>
+                {% for fname, spec in type_meta.fields.items() %}
+                <tr>
+                    <td><code>{{ fname }}</code></td>
+                    <td>{{ spec.type }}</td>
+                    <td>{{ "yes" if spec.required else "" }}</td>
+                    <td>{{ spec.description or '' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </section>
+</article>
+{% endblock %}

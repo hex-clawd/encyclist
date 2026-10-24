@@ -148,6 +148,7 @@ async def test_mcp_lists_all_tools(server_env):
             "ec_entity_update", "ec_entity_delete",
             "ec_rel_add", "ec_rel_query", "ec_rel_delete",
             "ec_stats", "ec_search", "ec_export", "ec_import",
+            "ec_key_create", "ec_key_list", "ec_key_revoke",
         }
         missing = expected - tool_names
         assert not missing, f"missing MCP tools: {missing}"

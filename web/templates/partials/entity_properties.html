@@ -1,0 +1,20 @@
+<table class="prop-table">
+    <tbody>
+        {% for key, value in entity.data.items() %}
+        <tr>
+            <th>{{ key }}</th>
+            <td>
+                {% if value is mapping or value is sequence and value is not string %}
+                <pre class="prop-json">{{ value|tojson(indent=2) }}</pre>
+                {% elif value is string and value|length > 200 %}
+                <div class="prop-long">{{ value }}</div>
+                {% else %}
+                {{ value }}
+                {% endif %}
+            </td>
+        </tr>
+        {% else %}
+        <tr><td class="empty-state" colspan="2">This entity has no properties yet.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>

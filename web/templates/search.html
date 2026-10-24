@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}{% if q %}Search: {{ q }}{% else %}Search{% endif %} &mdash; {{ site_name }}{% endblock %}
+{% block content %}
+<article class="page page-search">
+    <h1 class="page-title">Search</h1>
+    <form class="search-form-large" action="/search" method="get" role="search">
+        <input type="search" name="q" value="{{ q }}" placeholder="Search the vault..." autofocus>
+        <button type="submit">Search</button>
+    </form>
+
+    {% if q %}
+    <p class="search-summary">
+        {% if total %}{{ total }} result{{ "s" if total != 1 else "" }} for <strong>{{ q }}</strong>{% else %}No results for <strong>{{ q }}</strong>{% endif %}
+    </p>
+
+    {% if entity_results %}
+    <section class="result-group">
+        <h2>Entities</h2>
+        <ul class="result-list">
+            {% for r in entity_results %}
+            <li>
+                <a href="/entity/{{ r.id }}">{{ r.summary or r.id }}</a>
+                <span class="result-id"><code>{{ r.id }}</code></span>
+            </li>
+            {% endfor %}
+        </ul>
+    </section>
+    {% endif %}
+
+    {% if doc_results %}
+    <section class="result-group">
+        <h2>Documents</h2>
+        <ul class="result-list">
+            {% for r in doc_results %}
+            <li>
+                <a href="/doc/{{ r.id }}">{{ r.summary or r.id }}</a>
+                {% if r.score %}<span class="similarity">match {{ '%.0f'|format((r.score or 0) * 100) }}%</span>{% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+    </section>
+    {% endif %}
+    {% endif %}
+</article>
+{% endblock %}

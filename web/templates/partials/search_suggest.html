@@ -1,0 +1,18 @@
+{% if results %}
+<ul class="suggest-list">
+    {% for r in results %}
+    {% set u = '/entity/' ~ r.id if r.type == 'entity' else '/doc/' ~ r.id %}
+    <li>
+        <a href="{{ u }}">
+            <span class="badge badge-{{ r.type }}">{{ r.type }}</span>
+            {{ r.summary or r.id }}
+        </a>
+    </li>
+    {% endfor %}
+    <li class="suggest-all">
+        <a href="/search?q={{ q|urlencode }}">See all results &rarr;</a>
+    </li>
+</ul>
+{% else %}
+<ul class="suggest-list"><li class="suggest-empty">No matches for &ldquo;{{ q }}&rdquo;.</li></ul>
+{% endif %}

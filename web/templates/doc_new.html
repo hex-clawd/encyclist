@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}New document &mdash; {{ site_name }}{% endblock %}
+{% block content %}
+<article class="page page-form">
+    <h1 class="page-title">New document</h1>
+    <p class="page-sub">Documents are stored unstructured and indexed by meaning. Markdown is rendered.</p>
+
+    <form class="doc-edit-form" method="post" action="/doc/new">
+        <div class="form-row">
+            <label for="d-title">Title</label>
+            <input type="text" id="d-title" name="title" placeholder="Optional but recommended">
+        </div>
+        <div class="form-row">
+            <label for="d-tags">Tags <small>(comma-separated)</small></label>
+            <input type="text" id="d-tags" name="tags" placeholder="design, lore, meeting-notes">
+        </div>
+        <div class="form-row">
+            <label for="d-source">Source</label>
+            <input type="text" id="d-source" name="source" placeholder="who or what produced this">
+        </div>
+        <div class="form-row">
+            <label for="d-content">Content <small>(Markdown)</small></label>
+            <textarea id="d-content" name="content" rows="20" class="mono" required placeholder="# Heading
+
+Body text. Supports **markdown**, lists, code blocks, etc."></textarea>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Create document</button>
+            <a class="btn btn-cancel" href="/">Cancel</a>
+        </div>
+    </form>
+</article>
+{% endblock %}

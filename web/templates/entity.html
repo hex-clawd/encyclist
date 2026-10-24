@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}{{ name }} &mdash; {{ site_name }}{% endblock %}
+{% block content %}
+<article class="page page-entity">
+    <header class="entity-header">
+        <h1 class="page-title">{{ name }}</h1>
+        <div class="entity-meta">
+            <a class="badge badge-type" href="/type/{{ entity.type }}">{{ entity.type }}</a>
+            <span class="entity-id" title="Entity ID">{{ entity.entity_id }}</span>
+        </div>
+        {% if type_meta and type_meta.description %}
+        <p class="entity-typedesc">{{ type_meta.description }}</p>
+        {% endif %}
+    </header>
+
+    <div class="entity-layout">
+        <section class="entity-main">
+            <h2 class="section-heading">Properties</h2>
+            <div id="entity-properties">
+                {% include "partials/entity_properties.html" %}
+            </div>
+
+            <h2 class="section-heading">Relationships</h2>
+            <div class="rel-block">
+                <h3 class="rel-heading">Outgoing &rarr;</h3>
+                {% if outgoing %}
+                <ul class="rel-list">
+                    {% for edge in outgoing %}
+                    <li>
+                        <span class="rel-from">{{ name }}</span>
+                        <span class="rel-arrow">&mdash;[{{ edge.relation }}]&rarr;</span>
+                        {% set target_url = edge.to_id|id_url %}
+                        {% if target_url %}
+                        <a href="{{ target_url }}">{{ labels[edge.to_id]|default(edge.to_id) }}</a>
+                        {% else %}
+                        <span>{{ labels[edge.to_id]|default(edge.to_id) }}</span>
+                        {% endif %}
+                        {% if edge.properties %}
+                        <span class="rel-props">{{ edge.properties|tojson }}</span>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="empty-state">No outgoing relationships.</p>
+                {% endif %}
+            </div>
+
+            <div class="rel-block">
+                <h3 class="rel-heading">Incoming &larr;</h3>
+                {% if incoming %}
+                <ul class="rel-list">
+                    {% for edge in incoming %}
+                    <li>
+                        {% set source_url = edge.from_id|id_url %}
+                        {% if source_url %}
+                        <a href="{{ source_url }}">{{ labels[edge.from_id]|default(edge.from_id) }}</a>
+                        {% else %}
+                        <span>{{ labels[edge.from_id]|default(edge.from_id) }}</span>
+                        {% endif %}
+                        <span class="rel-arrow">&mdash;[{{ edge.relation }}]&rarr;</span>
+                        <span class="rel-to">{{ name }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="empty-state">No incoming relationships.</p>
+                {% endif %}
+            </div>
+
+            {% if related_docs %}
+            <h2 class="section-heading">Related documents</h2>
+            <ul class="doc-results">
+                {% for doc in related_docs %}
+                <li>
+                    <a href="/doc/{{ doc.doc_id }}">{{ doc.title or doc.doc_id }}</a>
+                    {% if doc.similarity is not none %}
+                    <span class="similarity">match {{ '%.0f'|format((doc.similarity or 0) * 100) }}%</span>
+                    {% endif %}
+                    {% if doc.tags %}
+                    <span class="doc-tags">
+                        {% for tag in doc.tags %}<span class="tag">{{ tag }}</span>{% endfor %}
+                    </span>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+        </section>
+
+        <aside class="entity-sidebar">
+            <div class="infobox">
+                <h2 class="infobox-title">{{ name }}</h2>
+                <table class="infobox-table">
+                    <tr><th>Type</th><td><a href="/type/{{ entity.type }}">{{ entity.type }}</a></td></tr>
+                    {% if entity.created_by %}<tr><th>Created by</th><td>{{ entity.created_by }}</td></tr>{% endif %}
+                    {% if entity.created_at %}<tr><th>Created</th><td>{{ entity.created_at }}</td></tr>{% endif %}
+                    {% if entity.updated_at %}<tr><th>Updated</th><td>{{ entity.updated_at }}</td></tr>{% endif %}
+                    <tr><th>ID</th><td><code>{{ entity.entity_id }}</code></td></tr>
+                </table>
+                <div class="infobox-actions">
+                    <button
+                        class="btn"
+                        hx-get="/entity/{{ entity.entity_id }}/edit"
+                        hx-target="#entity-properties"
+                        hx-swap="innerHTML">
+                        Edit
+                    </button>
+                    <form action="/entity/{{ entity.entity_id }}/delete" method="post"
+                          onsubmit="return confirm('Delete this entity?');">
+                        <button type="submit" class="btn btn-danger">Delete</button>
+                    </form>
+                </div>
+            </div>
+            <p class="sidebar-note">
+                <a href="/graph?entity_id={{ entity.entity_id }}">Visualize relationships &rarr;</a>
+            </p>
+        </aside>
+    </div>
+</article>
+{% endblock %}

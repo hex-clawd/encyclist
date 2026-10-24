@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Graph explorer &mdash; {{ site_name }}{% endblock %}
+{% block head_extra %}
+<script src="https://d3js.org/d3.v7.min.js" defer></script>
+{% endblock %}
+{% block content %}
+<article class="page page-graph">
+    <h1 class="page-title">Graph explorer</h1>
+    <p class="page-sub">
+        Click a node to navigate to its page.
+        {% if seed_entity_id %}Showing the neighborhood of <code>{{ seed_entity_id }}</code>.{% endif %}
+    </p>
+
+    <form class="graph-controls" id="graph-controls" method="get" action="/graph">
+        <label>
+            Entity ID
+            <input type="text" name="entity_id" value="{{ seed_entity_id or '' }}" placeholder="ent_... (optional)">
+        </label>
+        <label>
+            Filter by type
+            <select name="type">
+                <option value="">— any —</option>
+                {% for t in types %}
+                <option value="{{ t.name }}" {% if seed_type == t.name %}selected{% endif %}>{{ t.name }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <button type="submit" class="btn">Reload</button>
+    </form>
+
+    <div id="graph-container">
+        <svg id="graph-svg" width="100%" height="600"></svg>
+    </div>
+    <p id="graph-empty" class="empty-state" hidden>No nodes to display.</p>
+</article>
+
+<script>
+window.GRAPH_SEED_ENTITY = {{ (seed_entity_id or '')|tojson }};
+window.GRAPH_SEED_TYPE = {{ (seed_type or '')|tojson }};
+</script>
+<script src="/static/graph.js" defer></script>
+{% endblock %}
